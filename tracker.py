@@ -1,5 +1,4 @@
 from socket import create_server
-import threading
 
 TRACKER_PORT = 13000
 
@@ -9,12 +8,13 @@ files = {
 }
 
 
-def receive_file():
-    pass
-
-
-def send_file():
-    pass
+def send_peer_for_file(conn, ip):
+    filename = conn.recv(1024).decode()
+    peers = files[filename]
+    for p in peers:
+        if p != ip:
+            conn.sendall(p.encode())
+            break
 
 
 def send_file_list(conn):
@@ -42,6 +42,7 @@ def register_peer(conn, ip):
             files[file].append(ip)
         else:
             files[file] = [ip]
+
 
 def unregister_peer(ip):
     """Unregisters a peer when requested. Removes the ip provided from the files in the 
@@ -82,8 +83,12 @@ def main():
                 unregister_peer(ip)
             case "GET_FILES":
                 send_file_list(conn)
+            case "REQUEST_FILE":
+                conn.sendall("OK".encode())
+                send_peer_for_file(conn, ip)
 
         print(files)
+
 
 if __name__ == "__main__":
     main()
