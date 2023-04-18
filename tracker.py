@@ -9,6 +9,14 @@ files = {
 
 
 def send_peer_for_file(conn, ip):
+    """Sends the ip of the first peer which is not the requesting peer
+    which have the file requested.
+
+    Args:
+        conn (_type_): _description_
+        ip (_type_): _description_
+    """
+
     filename = conn.recv(1024).decode()
     peers = files[filename]
     for p in peers:

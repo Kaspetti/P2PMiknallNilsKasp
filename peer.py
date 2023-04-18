@@ -102,6 +102,7 @@ def request_file(ip):
 def peer_server(server):
     server.listen()
 
+    # TODO: Check that the file in question actually exists in the peer
     while True:
         conn = server.accept()[0]
         filename = conn.recv(1024).decode()
@@ -119,6 +120,7 @@ def main():
 
     register_peer(ip)
 
+    # TODO: Better UI. Maybe not clear after each commend.
     while True:
         clear_screen()
         print("Welcome to TextTorrent!")
