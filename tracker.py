@@ -35,6 +35,9 @@ def register_peer(conn, ip):
     received_files = conn.recv(1024).decode().split('\n')
 
     for file in received_files:
+        if not file:
+            continue
+
         if file in files.keys():
             files[file].append(ip)
         else:

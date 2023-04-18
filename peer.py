@@ -1,9 +1,12 @@
 from socket import socket, create_server
 import threading
+import os
 
 TRACKER_PORT = 13000
 
-files = ["test.txt", "tissemann.txt"]
+
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
 
 
 def send_command(sock, command, ip=""):
@@ -33,6 +36,8 @@ def register_peer(ip):
     response = sock.recv(1024).decode()
 
     if response == "OK":
+        files = os.listdir("files/")
+
         sock.sendall("\n".join(files).encode())
     else:
         print("ERROR")
@@ -61,8 +66,10 @@ def get_all_files():
     send_command(sock, "GET_FILES")
 
     files = sock.recv(1024).decode()
+    clear_screen()
     print(files)
     sock.close()
+    input("Press any key to continue...")
 
 
 def main():
@@ -73,11 +80,12 @@ def main():
 
     register_peer(ip)
 
-    print("Welcome to TextTorrent!")
-    print("1) Unregister")
-    print("2) Get all files")
-
     while True:
+        clear_screen()
+        print("Welcome to TextTorrent!")
+        print("1) Unregister")
+        print("2) Get all files")
+
         command = input()
 
         match command:
