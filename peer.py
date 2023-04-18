@@ -6,6 +6,18 @@ TRACKER_PORT = 13000
 files = ["test.txt", "tissemann.txt"]
 
 
+def send_command(sock, command, ip=""):
+    """Sends a command to the track. Sends a message with the command and the server ip
+    of the peer.
+
+    Args:
+        sock: The connection to send from.
+        command: The command to send
+        ip (optional): The server ip of the peer. Defaults to "".
+    """
+    sock.sendall("\n".join([command, ip]).encode())
+
+
 def register_peer(ip):
     """Registers the peer in the tracker. Asks the tracker to register it.
     The tracker returns a response code. If this code is 'OK' then the peer sends 
@@ -17,7 +29,7 @@ def register_peer(ip):
     
     sock = socket()
     sock.connect(("localhost", TRACKER_PORT))
-    sock.sendall("\n".join(["REGISTER", ip]).encode())
+    send_command(sock, "REGISTER", ip)
     response = sock.recv(1024).decode()
 
     if response == "OK":
@@ -34,15 +46,26 @@ def unregister_peer(ip):
         ip: The server ip of this peer to be unregistered in the tracker.
     """
 
-    sock  = socket()
+    sock = socket()
     sock.connect(("localhost", TRACKER_PORT))
-    sock.sendall("\n".join(["UNREGISTER", ip]).encode())
+    send_command(sock, "UNREGISTER", ip)
     sock.close()
     exit()
 
 
+def get_all_files():
+    """Gets all files in the system."""
+
+    sock = socket()
+    sock.connect(("localhost", TRACKER_PORT))
+    send_command(sock, "GET_FILES")
+
+    files = sock.recv(1024).decode()
+    print(files)
+    sock.close()
+
+
 def main():
-    # Mainly for testing in localhost
     port = input("Select port: ")
 
     server = create_server(("localhost", int(port)))
@@ -50,14 +73,18 @@ def main():
 
     register_peer(ip)
 
+    print("Welcome to TextTorrent!")
+    print("1) Unregister")
+    print("2) Get all files")
+
     while True:
-        print("Welcome to TextTorrent!")
-        print("1) Unregister")
         command = input()
 
         match command:
             case "1":
                 unregister_peer(ip)
+            case "2":
+                get_all_files()
 
 
 if __name__ == "__main__":

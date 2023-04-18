@@ -17,8 +17,8 @@ def send_file():
     pass
 
 
-def send_file_list():
-    pass
+def send_file_list(conn):
+    conn.sendall("\n".join(files.keys()).encode())
 
 
 def register_peer(conn, ip):
@@ -77,6 +77,8 @@ def main():
                 register_peer(conn, ip)
             case "UNREGISTER":
                 unregister_peer(ip)
+            case "GET_FILES":
+                send_file_list(conn)
 
         print(files)
 
