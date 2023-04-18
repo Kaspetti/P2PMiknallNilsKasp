@@ -21,18 +21,33 @@ def send_file_list():
     pass
 
 
-def register_peer(conn):
+def register_peer(conn, ip):
+    """Registers a peer after connection. Receives the all the files from the
+    peer and adds their files to the files dictionary with their ip.
+
+    Args:
+        conn: the peer connection used for receiving the files
+        ip: the ip of the server connected to the peer. This is not the ip
+        of the connection but rather the ip that should be used when other peers
+        fetch the files from them. 
+    """
+
     received_files = conn.recv(1024).decode().split('\n')
 
     for file in received_files:
         if file in files.keys():
-            files[file].append(conn.getpeername())
+            files[file].append(ip)
         else:
-            files[file] = [conn.getpeername()]
-
-    print(files)
+            files[file] = [ip]
 
 def unregister_peer(ip):
+    """Unregisters a peer when requested. Removes the ip provided from the files in the 
+    files dictionary.
+
+    Args:
+        ip: The ip to be removed from the files dictionary
+    """
+
     empty_files = []
 
     for filename in files:
@@ -52,12 +67,18 @@ def main():
 
     while True:
         conn = sock.accept()[0]
-        command = conn.recv(1024).decode()
+        response = conn.recv(1024).decode().split("\n")
+        command = response[0]
+        ip = response[1]
 
         match command:
             case "REGISTER":
                 conn.sendall("OK".encode())
-                register_peer(conn)
+                register_peer(conn, ip)
+            case "UNREGISTER":
+                unregister_peer(ip)
+
+        print(files)
 
 if __name__ == "__main__":
     main()
