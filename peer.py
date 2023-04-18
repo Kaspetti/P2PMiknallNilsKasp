@@ -1,6 +1,5 @@
 from socket import socket, create_server
 import threading
-import random
 
 TRACKER_PORT = 13000
 
@@ -43,7 +42,10 @@ def unregister_peer(ip):
 
 
 def main():
-    server = create_server(("localhost", random.randint(14000, 14010)))
+    # Mainly for testing in localhost
+    port = input("Select port: ")
+
+    server = create_server(("localhost", int(port)))
     ip = server.getsockname()[0] + ":" + str(server.getsockname()[1])
 
     register_peer(ip)
