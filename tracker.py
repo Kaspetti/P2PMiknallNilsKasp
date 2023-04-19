@@ -8,22 +8,44 @@ files = {
 }
 
 
+def register_single_file(conn, ip):
+    filename = conn.recv(1024).decode()
+
+    if filename in files.keys():
+        if ip in files[filename]:
+            return
+
+        files[filename].append(ip)
+    else:
+        files[filename] = [ip]
+
+    print(filename)
+
+
 def send_peer_for_file(conn, ip):
     """Sends the ip of the first peer which is not the requesting peer
     which have the file requested.
 
     Args:
-        conn (_type_): _description_
-        ip (_type_): _description_
+        conn: the connection of the asking peer
+        ip: the ip of the asking peers server
     """
 
     filename = conn.recv(1024).decode()
+
+    if filename not in files.keys():
+        conn.sendall("ERROR_NO_FILE".encode())
+        return
+
     peers = files[filename]
     for p in peers:
         if p != ip:
             conn.sendall(p.encode())
-            break
+            return
+    
+    conn.sendall("ERROR_NO_PEER".encode())
 
+    
 
 def send_file_list(conn):
     conn.sendall("\n".join(files.keys()).encode())
@@ -63,6 +85,9 @@ def unregister_peer(ip):
     empty_files = []
 
     for filename in files:
+        if ip not in files[filename]:
+            continue
+
         files[filename].remove(ip)
 
         if len(files[filename]) == 0:
@@ -94,6 +119,9 @@ def main():
             case "REQUEST_FILE":
                 conn.sendall("OK".encode())
                 send_peer_for_file(conn, ip)
+            case "REGISTER_FILE":
+                conn.sendall("OK".encode())
+                register_single_file(conn, ip)
 
         print(files)
 

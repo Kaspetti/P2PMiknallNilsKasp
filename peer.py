@@ -9,6 +9,21 @@ def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 
+def register_file(ip, filename):
+    sock = socket()
+    sock.connect(("localhost", TRACKER_PORT))
+    send_command(sock, "REGISTER_FILE", ip)
+    
+    response = sock.recv(1024).decode()
+
+    if response == "OK":
+        sock.sendall(filename.encode())
+    else:
+        print("ERROR REGISTERING FILE IN TRACKER")
+    
+    sock.close()
+
+
 def send_command(sock, command, ip=""):
     """Sends a command to the track. Sends a message with the command and the server ip
     of the peer.
@@ -66,7 +81,6 @@ def get_all_files():
     send_command(sock, "GET_FILES")
 
     files = sock.recv(1024).decode()
-    clear_screen()
     print(files)
     sock.close()
     input("Press any key to continue...")
@@ -82,16 +96,29 @@ def request_file(ip):
     if response == "OK":
         filename = input("Input file name: ")
         sock.sendall(filename.encode())
-        peer = sock.recv(1024).decode().split(":")
+        peer = sock.recv(1024).decode()
         sock.close()
+
+        if "ERROR" in peer:
+            print("Failed with error: " + peer)
+            return
+        else:
+            peer = peer.split(":")
+
 
         sock = socket()
         sock.connect((peer[0], int(peer[1])))
         sock.sendall(filename.encode())
         contents = sock.recv(1024).decode()
+
+        if "ERROR" in contents:
+            print("Failed with error: " + contents)
+            return
         
         with open("files/" + filename, "w") as f:
             f.write(contents)
+
+        register_file(ip, filename)1
         
         print("Donwload finished. Press any key to continue...")
         input()
@@ -102,10 +129,14 @@ def request_file(ip):
 def peer_server(server):
     server.listen()
 
-    # TODO: Check that the file in question actually exists in the peer
     while True:
         conn = server.accept()[0]
         filename = conn.recv(1024).decode()
+        
+        if filename not in os.listdir("files/"):
+            conn.sendall("ERROR_NO_FILE".encode())
+            continue
+
         with open("files/" + filename, "r") as f:
             content = f.read()
             conn.sendall(content.encode())
@@ -119,10 +150,9 @@ def main():
     _thread.start_new_thread(peer_server, (server, ))
 
     register_peer(ip)
+    clear_screen()
 
-    # TODO: Better UI. Maybe not clear after each commend.
     while True:
-        clear_screen()
         print("Welcome to TextTorrent!")
         print("1) Unregister")
         print("2) Get all files")
