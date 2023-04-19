@@ -6,6 +6,7 @@ TRACKER_PORT = 13000
 files = {
 
 }
+"""Dict: Filename : [IP]"""
 
 
 def register_single_file(conn, ip):
@@ -37,18 +38,26 @@ def send_peer_for_file(conn, ip):
         conn.sendall("ERROR_NO_FILE".encode())
         return
 
+    if ip in files[filename]:
+        conn.sendall("ERROR_EXISTING_FILE".encode())
+        return
+
     peers = files[filename]
     for p in peers:
-        if p != ip:
-            conn.sendall(p.encode())
-            return
+        conn.sendall(p.encode())
+        return
     
     conn.sendall("ERROR_NO_PEER".encode())
 
     
 
-def send_file_list(conn):
-    conn.sendall("\n".join(files.keys()).encode())
+def send_file_list(conn, ip):
+    response = "\n".join([k for k, v in files.items() if ip not in v])
+
+    if not response:
+        response = "No files found"
+
+    conn.sendall(response.encode())
 
 
 def register_peer(conn, ip):
@@ -115,7 +124,7 @@ def main():
             case "UNREGISTER":
                 unregister_peer(ip)
             case "GET_FILES":
-                send_file_list(conn)
+                send_file_list(conn, ip)
             case "REQUEST_FILE":
                 conn.sendall("OK".encode())
                 send_peer_for_file(conn, ip)

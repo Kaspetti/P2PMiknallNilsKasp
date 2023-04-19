@@ -3,6 +3,7 @@ import _thread
 import os
 
 TRACKER_PORT = 13000
+file_store = ""
 
 
 def clear_screen():
@@ -51,7 +52,7 @@ def register_peer(ip):
     response = sock.recv(1024).decode()
 
     if response == "OK":
-        files = os.listdir("files/")
+        files = os.listdir(file_store)
 
         sock.sendall("\n".join(files).encode())
     else:
@@ -73,18 +74,16 @@ def unregister_peer(ip):
     exit()
 
 
-def get_all_files():
+def get_all_files(ip):
     """Gets all files in the system."""
 
     sock = socket()
     sock.connect(("localhost", TRACKER_PORT))
-    send_command(sock, "GET_FILES")
+    send_command(sock, "GET_FILES", ip)
 
     files = sock.recv(1024).decode()
     print(files)
     sock.close()
-    input("Press any key to continue...")
-
 
 def request_file(ip):
     sock = socket()
@@ -115,13 +114,12 @@ def request_file(ip):
             print("Failed with error: " + contents)
             return
         
-        with open("files/" + filename, "w") as f:
+        with open(file_store + filename, "w") as f:
             f.write(contents)
 
-        register_file(ip, filename)1
+        register_file(ip, filename)
         
-        print("Donwload finished. Press any key to continue...")
-        input()
+        print("Donwload finished.")
     else:
         print("ERROR")
 
@@ -133,17 +131,19 @@ def peer_server(server):
         conn = server.accept()[0]
         filename = conn.recv(1024).decode()
         
-        if filename not in os.listdir("files/"):
+        if filename not in os.listdir(file_store):
             conn.sendall("ERROR_NO_FILE".encode())
             continue
 
-        with open("files/" + filename, "r") as f:
+        with open(file_store + filename, "r") as f:
             content = f.read()
             conn.sendall(content.encode())
 
 
 def main():
     port = input("Select port: ")
+    global file_store
+    file_store = input("Select filestore: ")
 
     server = create_server(("localhost", int(port)))
     ip = server.getsockname()[0] + ":" + str(server.getsockname()[1])
@@ -164,7 +164,7 @@ def main():
             case "1":
                 unregister_peer(ip)
             case "2":
-                get_all_files()
+                get_all_files(ip)
             case "3":
                 request_file(ip)
 
