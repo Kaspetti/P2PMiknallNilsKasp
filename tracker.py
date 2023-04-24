@@ -1,4 +1,6 @@
 from socket import create_server
+import os
+
 
 TRACKER_PORT = 13000
 
@@ -107,10 +109,24 @@ def unregister_peer(ip):
         del files[file]
 
 
+def prettyPrint(files: dict[str : list[str]]) -> None:
+    """Prints the tracked files, in an orderly fashon
+
+    Args:
+        files: Dict of the tracked files
+    """
+    sep = ", "
+    for filename, ip in files.items():
+        print(f"File: {filename}, From: {sep.join(ip)}")
+    
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
 def main():
+    clear_screen()
+    print("Tracker")
     sock = create_server(("localhost", TRACKER_PORT))
     sock.listen()
-
     while True:
         conn = sock.accept()[0]
         response = conn.recv(1024).decode().split("\n")
@@ -132,7 +148,8 @@ def main():
                 conn.sendall("OK".encode())
                 register_single_file(conn, ip)
 
-        print(files)
+        clear_screen()
+        prettyPrint(files)
 
 
 if __name__ == "__main__":
