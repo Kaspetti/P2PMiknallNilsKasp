@@ -55,7 +55,7 @@ def send_file_list(conn, ip):
     response = "\n".join([k for k, v in files.items() if ip not in v])
 
     if not response:
-        response = "No files found"
+        response = "No new files found"
 
     conn.sendall(response.encode())
 

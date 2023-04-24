@@ -3,6 +3,14 @@ import _thread
 import os
 
 TRACKER_PORT = 13000
+
+COMMANDS = {
+    "quit" : "Unregisters your files, and exits the program.",
+    "get <filenames>" : "Gets specified file",
+    "list" : "Lists all files that you do not have.",
+    "help" : "Shows this menu"
+}
+
 file_store = ""
 
 
@@ -11,6 +19,9 @@ def clear_screen():
 
 
 def register_file(ip, filename):
+    
+    global TRACKER_PORT
+    
     sock = socket()
     sock.connect(("localhost", TRACKER_PORT))
     send_command(sock, "REGISTER_FILE", ip)
@@ -46,6 +57,8 @@ def register_peer(ip):
         ip: The server ip of this peer to be registered in the tracker.
     """
     
+    global TRACKER_PORT
+    
     sock = socket()
     sock.connect(("localhost", TRACKER_PORT))
     send_command(sock, "REGISTER", ip)
@@ -66,6 +79,8 @@ def unregister_peer(ip):
     Args:
         ip: The server ip of this peer to be unregistered in the tracker.
     """
+    
+    global TRACKER_PORT
 
     sock = socket()
     sock.connect(("localhost", TRACKER_PORT))
@@ -77,6 +92,8 @@ def unregister_peer(ip):
 def get_all_files(ip):
     """Gets all files in the system."""
 
+    global TRACKER_PORT
+
     sock = socket()
     sock.connect(("localhost", TRACKER_PORT))
     send_command(sock, "GET_FILES", ip)
@@ -85,43 +102,56 @@ def get_all_files(ip):
     print(files)
     sock.close()
 
-def request_file(ip):
-    sock = socket()
-    sock.connect(("localhost", TRACKER_PORT))
-    send_command(sock, "REQUEST_FILE", ip)
-
-    response = sock.recv(1024).decode()
+def request_file(ip, files: list[str]):
     
-    if response == "OK":
-        filename = input("Input file name: ")
-        sock.sendall(filename.encode())
-        peer = sock.recv(1024).decode()
-        sock.close()
-
-        if "ERROR" in peer:
-            print("Failed with error: " + peer)
-            return
-        else:
-            peer = peer.split(":")
-
-
+    global TRACKER_PORT
+    pretty_files = ", ".join(files)
+    
+    file_count = 0
+    
+    print(f"Getting {pretty_files}")
+    for filename in files:
+    
         sock = socket()
-        sock.connect((peer[0], int(peer[1])))
-        sock.sendall(filename.encode())
-        contents = sock.recv(1024).decode()
+        sock.connect(("localhost", TRACKER_PORT))
+        send_command(sock, "REQUEST_FILE", ip)
 
-        if "ERROR" in contents:
-            print("Failed with error: " + contents)
-            return
+        response = sock.recv(1024).decode()
         
-        with open(file_store + filename, "w") as f:
-            f.write(contents)
+        
+        if response == "OK":
+        
+            sock.sendall(filename.encode())
+            peer = sock.recv(1024).decode()
+            sock.close()
 
-        register_file(ip, filename)
+            if "ERROR" in peer:
+                print(f"Failed with error: {peer}, for file: {filename}")
+                continue
+            else:
+                peer = peer.split(":")
+
+
+            sock = socket()
+            sock.connect((peer[0], int(peer[1])))
+            sock.sendall(filename.encode())
+            contents = sock.recv(1024).decode()
+
+            if "ERROR" in contents:
+                print(f"Failed with error: {contents}, for file: {filename}")
+                continue
+            print(f"Downloading file: {filename}")
+            
+            with open(f"{file_store}/{filename}", "w") as f:
+                f.write(contents)
+
+            register_file(ip, filename)
+            file_count += 1
+        else:
+            print(f"ERROR GETTING FILE: {filename}")
+        print(f"Download finished, for file: {filename}.")
         
-        print("Donwload finished.")
-    else:
-        print("ERROR")
+    print(f"Downloaded ({file_count}/{len(files)} files.)")
 
 
 def peer_server(server):
@@ -135,12 +165,22 @@ def peer_server(server):
             conn.sendall("ERROR_NO_FILE".encode())
             continue
 
-        with open(file_store + filename, "r") as f:
+        with open(f"{file_store}/{filename}", "r") as f:
             content = f.read()
             conn.sendall(content.encode())
 
 
+def print_help(cmds: dict[str : str]) -> None:
+    """Prints all the given commands
+
+    Args:
+        cmds (dict): Dictionary containing each command, and their corresponding explanation
+    """
+    for cmd, ex in cmds.items():
+        print(f"{cmd} : {ex}")
+
 def main():
+    
     port = input("Select port: ")
     global file_store
     file_store = input("Select filestore: ")
@@ -152,22 +192,26 @@ def main():
     register_peer(ip)
     clear_screen()
 
+    print("Welcome to TextTorrent!")
+    print("Type 'help' to get a list of all commands")
     while True:
-        print("Welcome to TextTorrent!")
-        print("1) Unregister")
-        print("2) Get all files")
-        print("3) Request file")
-
-        command = input()
-
-        match command:
-            case "1":
+        raw_cmd = input("> ")
+        cmd = raw_cmd.split()
+        match cmd:
+            case ["quit"]:
                 unregister_peer(ip)
-            case "2":
+                
+            case ["list"]:
                 get_all_files(ip)
-            case "3":
-                request_file(ip)
-
+            
+            case "get", *files:
+                request_file(ip, files)
+                
+            case ["help"]:
+                print_help(COMMANDS)
+                
+            case _:
+                print(f"Unknown command: '{raw_cmd}', type 'help', to get a list of all commands.")
 
 if __name__ == "__main__":
     main()
